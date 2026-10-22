@@ -1,0 +1,31 @@
+416-    return render_template("orders.html", orders=user_orders)
+417-
+418-
+419-@bp.route("/orders/<int:order_id>")
+420-@login_required
+421:def order_detail(order_id):
+422-    """
+423-    INTENTIONAL VULNERABILITY #2 – IDOR / Broken Access Control
+424-    -----------------------------------------------------------
+425-    Location : routes.py → order_detail()
+426-    Root cause: The query fetches an order by ID only. There is NO check that
+427-                the order.user_id matches session['user_id']. Any authenticated
+428-                customer can view any other customer's order by changing the
+429-                order_id in the URL.
+430-    """
+431-    db = get_db()
+432-    # VULNERABLE: missing ownership verification
+433-    order = db.execute(
+434-        "SELECT o.*, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?",
+435-        (order_id,),
+436-    ).fetchone()
+437-    if order is None:
+438-        abort(404)
+439-
+440-    items = db.execute(
+441-        """
+442-        SELECT oi.quantity, oi.unit_price, p.name, p.id AS product_id
+443-        FROM order_items oi
+444-        JOIN products p ON oi.product_id = p.id
+445-        WHERE oi.order_id = ?
+446-        """,

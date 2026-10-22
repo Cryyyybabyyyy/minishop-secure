@@ -1,0 +1,66 @@
+1-"""
+2-Application routes for MiniShop.
+3-
+4-MiniShop application routes. Security assessment fixes are applied to the
+5:command diagnostics, order ownership checks, and image upload handling.
+6-"""
+7-
+8-import os
+9-from functools import wraps
+10-from io import BytesIO
+11-
+12-from flask import (
+13-    Blueprint,
+14-    render_template,
+15-    request,
+16-    redirect,
+17-    url_for,
+18-    session,
+19-    flash,
+20-    current_app,
+21-    send_from_directory,
+22-    abort,
+23-)
+24-from werkzeug.security import check_password_hash, generate_password_hash
+25-from werkzeug.utils import secure_filename
+--
+610-
+611-# ---------------------------------------------------------------------------
+612-# Product Diagnostics (Command Injection demo)
+613-# ---------------------------------------------------------------------------
+614-
+615:@bp.route("/diagnostics", methods=["GET", "POST"])
+616-@login_required
+617:def diagnostics():
+618-    output = None
+619-    product_code = ""
+620-
+621-    if request.method == "POST":
+622-        product_code = request.form.get("product_code", "").strip()
+623-
+624-        if product_code:
+625-            output = (
+626-                "Diagnostic check for product:\n"
+627-                + product_code
+628-            )
+629-        else:
+630-            flash("Please enter a product code.", "warning")
+631-
+632-    return render_template(
+633:        "diagnostics.html",
+634-        output=output,
+635-        product_code=product_code,
+636-    )
+637-
+638-# ---------------------------------------------------------------------------
+639-# Error handlers
+640-# ---------------------------------------------------------------------------
+641-
+642-@bp.app_errorhandler(404)
+643-def not_found(e):
+644-    return render_template("error.html", code=404, message="Page not found"), 404
+645-
+646-
+647-@bp.app_errorhandler(500)
+648-def server_error(e):
+649-    return render_template("error.html", code=500, message="Internal server error"), 500

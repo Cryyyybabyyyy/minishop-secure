@@ -10,7 +10,7 @@ services:
     restart: "no"
     ports:
       # Host loopback only – never 0.0.0.0
-      - "127.0.0.1:5000:5000"
+      - "127.0.0.1:5002:5000"
     volumes:
       # Persistent but isolated data
       - minishop-db:/app/instance

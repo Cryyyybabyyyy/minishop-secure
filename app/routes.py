@@ -1,15 +1,13 @@
 """
 Application routes for MiniShop.
 
-INTENTIONAL VULNERABILITIES (authorised lab only):
-1. OS Command Injection  – /diagnostics  (user input concatenated into shell command)
-2. IDOR / Broken Access Control – /orders/<id>  (no ownership check)
-3. Unrestricted File Upload – /seller/upload and /profile/upload  (no extension / content validation)
+MiniShop application routes. Security assessment fixes are applied to the
+command diagnostics, order ownership checks, and image upload handling.
 """
 
 import os
-import subprocess
 from functools import wraps
+from io import BytesIO
 
 from flask import (
     Blueprint,
@@ -28,12 +26,46 @@ from werkzeug.utils import secure_filename
 
 from app.models import get_db
 
+from PIL import Image, UnidentifiedImageError
+
 bp = Blueprint("main", __name__)
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+ALLOWED_IMAGE_TYPES = {
+    ".jpg": "JPEG",
+    ".jpeg": "JPEG",
+    ".png": "PNG",
+    ".webp": "WEBP",
+}
+
+
+def validate_uploaded_image(file, filename):
+    """Accept only supported images whose contents match their format."""
+    extension = os.path.splitext(filename)[1].lower()
+    expected_format = ALLOWED_IMAGE_TYPES.get(extension)
+
+    if expected_format is None:
+        return False
+
+    try:
+        contents = file.read()
+        file.seek(0)
+
+        with Image.open(BytesIO(contents)) as image:
+            if image.format != expected_format:
+                return False
+            image.verify()
+
+        file.seek(0)
+        return True
+
+    except (UnidentifiedImageError, OSError, ValueError):
+        file.seek(0)
+        return False
 
 def login_required(f):
     @wraps(f)
@@ -356,31 +388,32 @@ def profile():
 @bp.route("/profile/upload", methods=["POST"])
 @login_required
 def profile_upload():
-    """
-    INTENTIONAL VULNERABILITY #3 (also on seller upload) – Unrestricted File Upload
-    -------------------------------------------------------------------------------
-    Location : routes.py → profile_upload()
-    Root cause: No file-extension whitelist, no content-type validation,
-                no magic-byte inspection. Any file the customer uploads is
-                stored and can later be downloaded. Files are NOT executed.
-    """
+    """Upload a validated profile image for the logged-in user."""
     if "file" not in request.files:
         flash("No file part in the request.", "danger")
         return redirect(url_for("main.profile"))
+
     file = request.files["file"]
     if file.filename == "":
         flash("No file selected.", "warning")
         return redirect(url_for("main.profile"))
 
-    # VULNERABLE: only basic secure_filename, no extension / content checks
     filename = secure_filename(file.filename)
     if not filename:
         flash("Invalid filename.", "danger")
         return redirect(url_for("main.profile"))
 
-    # Prefix with user id to avoid collisions
+    if not validate_uploaded_image(file, filename):
+        flash(
+            "Invalid image file. Use a valid JPEG, PNG, or WebP image.",
+            "danger",
+        )
+        return redirect(url_for("main.profile"))
+
+    # Prefix with user id to avoid collisions between users.
     stored_name = f"profile_{session['user_id']}_{filename}"
     save_path = os.path.join(current_app.config["UPLOAD_FOLDER"], stored_name)
+
     try:
         file.save(save_path)
         db = get_db()
@@ -392,6 +425,7 @@ def profile_upload():
         flash(f"Profile picture '{filename}' uploaded successfully.", "success")
     except Exception as exc:
         flash(f"Upload failed: {exc}", "danger")
+
     return redirect(url_for("main.profile"))
 
 
@@ -418,22 +452,21 @@ def orders():
 
 @bp.route("/orders/<int:order_id>")
 @login_required
+
 def order_detail(order_id):
-    """
-    INTENTIONAL VULNERABILITY #2 – IDOR / Broken Access Control
-    -----------------------------------------------------------
-    Location : routes.py → order_detail()
-    Root cause: The query fetches an order by ID only. There is NO check that
-                the order.user_id matches session['user_id']. Any authenticated
-                customer can view any other customer's order by changing the
-                order_id in the URL.
-    """
+    """Display an order only to its authenticated owner."""
     db = get_db()
-    # VULNERABLE: missing ownership verification
+
     order = db.execute(
-        "SELECT o.*, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?",
-        (order_id,),
+        """
+        SELECT o.*, u.username
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        WHERE o.id = ? AND o.user_id = ?
+        """,
+        (order_id, session["user_id"]),
     ).fetchone()
+
     if order is None:
         abort(404)
 
@@ -448,7 +481,6 @@ def order_detail(order_id):
     ).fetchall()
 
     return render_template("order_detail.html", order=order, items=items)
-
 
 # ---------------------------------------------------------------------------
 # Seller Dashboard & Upload
@@ -475,35 +507,32 @@ def seller_dashboard():
 @bp.route("/seller/upload", methods=["GET", "POST"])
 @seller_required
 def seller_upload():
-    """
-    INTENTIONAL VULNERABILITY #3 – Unrestricted File Upload
-    -------------------------------------------------------
-    Location : routes.py → seller_upload()
-    Root cause: No file-extension whitelist, no content-type validation,
-                no magic-byte inspection. Any file the seller uploads is
-                stored under a (mostly) secure_filename name in the uploads
-                directory and can later be downloaded. Files are NOT executed
-                by the application; they are served as static downloads only.
-    """
+    """Allow sellers to upload validated product images."""
     if request.method == "POST":
         if "file" not in request.files:
             flash("No file part in the request.", "danger")
             return redirect(request.url)
+
         file = request.files["file"]
         if file.filename == "":
             flash("No file selected.", "warning")
             return redirect(request.url)
 
-        # VULNERABLE: only basic secure_filename, no extension / content checks
         filename = secure_filename(file.filename)
         if not filename:
             flash("Invalid filename.", "danger")
             return redirect(request.url)
 
+        if not validate_uploaded_image(file, filename):
+            flash(
+                "Invalid image file. Use a valid JPEG, PNG, or WebP image.",
+                "danger",
+            )
+            return redirect(request.url)
+
         save_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
         try:
             file.save(save_path)
-            # Optionally assign to a product
             product_id = request.form.get("product_id", type=int)
             if product_id:
                 db = get_db()
@@ -520,6 +549,7 @@ def seller_upload():
                 flash(f"File '{filename}' uploaded successfully.", "success")
         except Exception as exc:
             flash(f"Upload failed: {exc}", "danger")
+
         return redirect(url_for("main.seller_dashboard"))
 
     db = get_db()
@@ -540,15 +570,41 @@ def download_upload(filename):
 
 @bp.route("/media/<path:filename>")
 def serve_media(filename):
-    """Serve product / profile images inline (for display)."""
-    # Built-in SVG placeholders live under static/img
+    """Serve trusted built-in images or validated uploaded images inline."""
+    # Reject nested paths so callers cannot request arbitrary filesystem paths.
+    if os.path.basename(filename) != filename:
+        abort(404)
+
     static_img = os.path.join(current_app.root_path, "static", "img")
-    if os.path.isfile(os.path.join(static_img, filename)):
+    static_path = os.path.join(static_img, filename)
+    extension = os.path.splitext(filename)[1].lower()
+
+    # Preserve trusted, bundled image placeholders, including SVG files.
+    if extension in set(ALLOWED_IMAGE_TYPES) | {".svg"} and os.path.isfile(static_path):
         return send_from_directory(static_img, filename)
-    # User uploads
+
+    if extension not in ALLOWED_IMAGE_TYPES:
+        abort(404)
+
+    upload_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+    try:
+        with open(upload_path, "rb") as uploaded_file:
+            if not validate_uploaded_image(uploaded_file, filename):
+                abort(404)
+    except OSError:
+        abort(404)
+
+    mime_types = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+    }
     return send_from_directory(
         current_app.config["UPLOAD_FOLDER"],
         filename,
+        mimetype=mime_types[extension],
+        as_attachment=False,
     )
 
 
@@ -559,43 +615,25 @@ def serve_media(filename):
 @bp.route("/diagnostics", methods=["GET", "POST"])
 @login_required
 def diagnostics():
-    """
-    INTENTIONAL VULNERABILITY #1 – OS Command Injection
-    ---------------------------------------------------
-    Location : routes.py → diagnostics()
-    Root cause: User-supplied 'product_code' is concatenated directly into a
-                shell command string that is passed to subprocess with shell=True.
-                A harmless proof-of-concept such as `; id` or `| whoami` will
-                execute inside the isolated container. No reverse shells,
-                destructive commands, or host-escape functionality is provided.
-    """
     output = None
     product_code = ""
+
     if request.method == "POST":
         product_code = request.form.get("product_code", "").strip()
+
         if product_code:
-            # VULNERABLE: unsanitised input + shell=True
-            cmd = f"echo 'Diagnostic check for product:' && echo {product_code}"
-            try:
-                result = subprocess.run(
-                    cmd,
-                    shell=True,  # intentional
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                output = result.stdout + result.stderr
-            except subprocess.TimeoutExpired:
-                output = "Error: command timed out."
-            except Exception as exc:
-                output = f"Error: {exc}"
+            output = (
+                "Diagnostic check for product:\n"
+                + product_code
+            )
         else:
             flash("Please enter a product code.", "warning")
 
     return render_template(
-        "diagnostics.html", output=output, product_code=product_code
+        "diagnostics.html",
+        output=output,
+        product_code=product_code,
     )
-
 
 # ---------------------------------------------------------------------------
 # Error handlers

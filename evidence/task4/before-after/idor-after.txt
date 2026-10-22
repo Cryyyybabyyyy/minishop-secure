@@ -1,0 +1,31 @@
+451-
+452-
+453-@bp.route("/orders/<int:order_id>")
+454-@login_required
+455-
+456:def order_detail(order_id):
+457-    """Display an order only to its authenticated owner."""
+458-    db = get_db()
+459-
+460-    order = db.execute(
+461-        """
+462-        SELECT o.*, u.username
+463-        FROM orders o
+464-        JOIN users u ON o.user_id = u.id
+465-        WHERE o.id = ? AND o.user_id = ?
+466-        """,
+467-        (order_id, session["user_id"]),
+468-    ).fetchone()
+469-
+470-    if order is None:
+471-        abort(404)
+472-
+473-    items = db.execute(
+474-        """
+475-        SELECT oi.quantity, oi.unit_price, p.name, p.id AS product_id
+476-        FROM order_items oi
+477-        JOIN products p ON oi.product_id = p.id
+478-        WHERE oi.order_id = ?
+479-        """,
+480-        (order_id,),
+481-    ).fetchall()

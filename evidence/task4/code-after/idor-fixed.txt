@@ -1,0 +1,31 @@
+def order_detail(order_id):
+    """Display an order only to its authenticated owner."""
+    db = get_db()
+
+    order = db.execute(
+        """
+        SELECT o.*, u.username
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        WHERE o.id = ? AND o.user_id = ?
+        """,
+        (order_id, session["user_id"]),
+    ).fetchone()
+
+    if order is None:
+        abort(404)
+
+    items = db.execute(
+        """
+        SELECT oi.quantity, oi.unit_price, p.name, p.id AS product_id
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ?
+        """,
+        (order_id,),
+    ).fetchall()
+
+    return render_template("order_detail.html", order=order, items=items)
+
+# ---------------------------------------------------------------------------
+# Seller Dashboard & Upload

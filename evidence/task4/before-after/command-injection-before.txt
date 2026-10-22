@@ -1,0 +1,80 @@
+1-"""
+2-Application routes for MiniShop.
+3-
+4-INTENTIONAL VULNERABILITIES (authorised lab only):
+5:1. OS Command Injection  – /diagnostics  (user input concatenated into shell command)
+6-2. IDOR / Broken Access Control – /orders/<id>  (no ownership check)
+7-3. Unrestricted File Upload – /seller/upload and /profile/upload  (no extension / content validation)
+8-"""
+9-
+10-import os
+11-import subprocess
+12-from functools import wraps
+13-
+14-from flask import (
+15-    Blueprint,
+16-    render_template,
+17-    request,
+18-    redirect,
+19-    url_for,
+20-    session,
+21-    flash,
+22-    current_app,
+23-    send_from_directory,
+24-    abort,
+25-)
+--
+554-
+555-# ---------------------------------------------------------------------------
+556-# Product Diagnostics (Command Injection demo)
+557-# ---------------------------------------------------------------------------
+558-
+559:@bp.route("/diagnostics", methods=["GET", "POST"])
+560-@login_required
+561:def diagnostics():
+562-    """
+563-    INTENTIONAL VULNERABILITY #1 – OS Command Injection
+564-    ---------------------------------------------------
+565:    Location : routes.py → diagnostics()
+566-    Root cause: User-supplied 'product_code' is concatenated directly into a
+567-                shell command string that is passed to subprocess with shell=True.
+568-                A harmless proof-of-concept such as `; id` or `| whoami` will
+569-                execute inside the isolated container. No reverse shells,
+570-                destructive commands, or host-escape functionality is provided.
+571-    """
+572-    output = None
+573-    product_code = ""
+574-    if request.method == "POST":
+575-        product_code = request.form.get("product_code", "").strip()
+576-        if product_code:
+577-            # VULNERABLE: unsanitised input + shell=True
+578-            cmd = f"echo 'Diagnostic check for product:' && echo {product_code}"
+579-            try:
+580-                result = subprocess.run(
+581-                    cmd,
+582-                    shell=True,  # intentional
+583-                    capture_output=True,
+584-                    text=True,
+585-                    timeout=5,
+--
+591-                output = f"Error: {exc}"
+592-        else:
+593-            flash("Please enter a product code.", "warning")
+594-
+595-    return render_template(
+596:        "diagnostics.html", output=output, product_code=product_code
+597-    )
+598-
+599-
+600-# ---------------------------------------------------------------------------
+601-# Error handlers
+602-# ---------------------------------------------------------------------------
+603-
+604-@bp.app_errorhandler(404)
+605-def not_found(e):
+606-    return render_template("error.html", code=404, message="Page not found"), 404
+607-
+608-
+609-@bp.app_errorhandler(500)
+610-def server_error(e):
+611-    return render_template("error.html", code=500, message="Internal server error"), 500

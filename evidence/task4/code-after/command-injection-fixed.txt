@@ -1,0 +1,23 @@
+def diagnostics():
+    output = None
+    product_code = ""
+
+    if request.method == "POST":
+        product_code = request.form.get("product_code", "").strip()
+
+        if product_code:
+            output = (
+                "Diagnostic check for product:\n"
+                + product_code
+            )
+        else:
+            flash("Please enter a product code.", "warning")
+
+    return render_template(
+        "diagnostics.html",
+        output=output,
+        product_code=product_code,
+    )
+
+# ---------------------------------------------------------------------------
+# Error handlers

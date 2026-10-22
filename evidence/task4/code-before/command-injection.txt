@@ -1,0 +1,36 @@
+@login_required
+def diagnostics():
+    """
+    INTENTIONAL VULNERABILITY #1 – OS Command Injection
+    ---------------------------------------------------
+    Location : routes.py → diagnostics()
+    Root cause: User-supplied 'product_code' is concatenated directly into a
+                shell command string that is passed to subprocess with shell=True.
+                A harmless proof-of-concept such as `; id` or `| whoami` will
+                execute inside the isolated container. No reverse shells,
+                destructive commands, or host-escape functionality is provided.
+    """
+    output = None
+    product_code = ""
+    if request.method == "POST":
+        product_code = request.form.get("product_code", "").strip()
+        if product_code:
+            # VULNERABLE: unsanitised input + shell=True
+            cmd = f"echo 'Diagnostic check for product:' && echo {product_code}"
+            try:
+                result = subprocess.run(
+                    cmd,
+                    shell=True,  # intentional
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                output = result.stdout + result.stderr
+            except subprocess.TimeoutExpired:
+                output = "Error: command timed out."
+            except Exception as exc:
+                output = f"Error: {exc}"
+        else:
+            flash("Please enter a product code.", "warning")
+
+    return render_template(

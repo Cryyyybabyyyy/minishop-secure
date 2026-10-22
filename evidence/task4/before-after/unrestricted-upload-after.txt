@@ -1,0 +1,127 @@
+41-    ".png": "PNG",
+42-    ".webp": "WEBP",
+43-}
+44-
+45-
+46:def validate_uploaded_image(file, filename):
+47-    """Accept only supported images whose contents match their format."""
+48-    extension = os.path.splitext(filename)[1].lower()
+49-    expected_format = ALLOWED_IMAGE_TYPES.get(extension)
+50-
+51-    if expected_format is None:
+52-        return False
+53-
+54-    try:
+55-        contents = file.read()
+56-        file.seek(0)
+57-
+58-        with Image.open(BytesIO(contents)) as image:
+59-            if image.format != expected_format:
+60-                return False
+61-            image.verify()
+62-
+63-        file.seek(0)
+64-        return True
+65-
+66-    except (UnidentifiedImageError, OSError, ValueError):
+67-        file.seek(0)
+68-        return False
+69-
+70-def login_required(f):
+71-    @wraps(f)
+--
+401-    filename = secure_filename(file.filename)
+402-    if not filename:
+403-        flash("Invalid filename.", "danger")
+404-        return redirect(url_for("main.profile"))
+405-
+406:    if not validate_uploaded_image(file, filename):
+407-        flash(
+408-            "Invalid image file. Use a valid JPEG, PNG, or WebP image.",
+409-            "danger",
+410-        )
+411-        return redirect(url_for("main.profile"))
+412-
+413-    # Prefix with user id to avoid collisions between users.
+414-    stored_name = f"profile_{session['user_id']}_{filename}"
+415-    save_path = os.path.join(current_app.config["UPLOAD_FOLDER"], stored_name)
+416-
+417-    try:
+418-        file.save(save_path)
+419-        db = get_db()
+420-        db.execute(
+421-            "UPDATE users SET profile_image = ? WHERE id = ?",
+422-            (stored_name, session["user_id"]),
+423-        )
+424-        db.commit()
+425-        flash(f"Profile picture '{filename}' uploaded successfully.", "success")
+426-    except Exception as exc:
+427-        flash(f"Upload failed: {exc}", "danger")
+428-
+429-    return redirect(url_for("main.profile"))
+430-
+431-
+--
+521-        filename = secure_filename(file.filename)
+522-        if not filename:
+523-            flash("Invalid filename.", "danger")
+524-            return redirect(request.url)
+525-
+526:        if not validate_uploaded_image(file, filename):
+527-            flash(
+528-                "Invalid image file. Use a valid JPEG, PNG, or WebP image.",
+529-                "danger",
+530-            )
+531-            return redirect(request.url)
+532-
+533-        save_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+534-        try:
+535-            file.save(save_path)
+536-            product_id = request.form.get("product_id", type=int)
+537-            if product_id:
+538-                db = get_db()
+539-                db.execute(
+540-                    "UPDATE products SET image_filename = ? WHERE id = ?",
+541-                    (filename, product_id),
+542-                )
+543-                db.commit()
+544-                flash(
+545-                    f"File '{filename}' uploaded and assigned to product #{product_id}.",
+546-                    "success",
+547-                )
+548-            else:
+549-                flash(f"File '{filename}' uploaded successfully.", "success")
+550-        except Exception as exc:
+551-            flash(f"Upload failed: {exc}", "danger")
+--
+587-        abort(404)
+588-
+589-    upload_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+590-    try:
+591-        with open(upload_path, "rb") as uploaded_file:
+592:            if not validate_uploaded_image(uploaded_file, filename):
+593-                abort(404)
+594-    except OSError:
+595-        abort(404)
+596-
+597-    mime_types = {
+598-        ".jpg": "image/jpeg",
+599-        ".jpeg": "image/jpeg",
+600-        ".png": "image/png",
+601-        ".webp": "image/webp",
+602-    }
+603-    return send_from_directory(
+604-        current_app.config["UPLOAD_FOLDER"],
+605-        filename,
+606-        mimetype=mime_types[extension],
+607-        as_attachment=False,
+608-    )
+609-
+610-
+611-# ---------------------------------------------------------------------------
+612-# Product Diagnostics (Command Injection demo)
+613-# ---------------------------------------------------------------------------
+614-
+615-@bp.route("/diagnostics", methods=["GET", "POST"])
+616-@login_required
+617-def diagnostics():
