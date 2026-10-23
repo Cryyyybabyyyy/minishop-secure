@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.1, pytest-8.3.3, pluggy-1.7.0 -- /Users/sadikurrahman/minishop-secure/.venv-sast/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sadikurrahman/minishop-secure
+collecting ... collected 8 items
+
+tests/test_app.py::test_index_page PASSED                                [ 12%]
+tests/test_app.py::test_login_page PASSED                                [ 25%]
+tests/test_app.py::test_login_success_alice PASSED                       [ 37%]
+tests/test_app.py::test_login_failure PASSED                             [ 50%]
+tests/test_app.py::test_orders_requires_login PASSED                     [ 62%]
+tests/test_app.py::test_seller_dashboard_requires_seller PASSED          [ 75%]
+tests/test_app.py::test_product_detail PASSED                            [ 87%]
+tests/test_app.py::test_404 PASSED                                       [100%]
+
+============================== 8 passed in 1.83s ===============================

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller Dashboard — MiniShop</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="logo">Mini<span>Shop</span></a>
+      <nav class="main-nav">
+        <a href="/">Home</a>
+        <a href="/#catalogue">Catalogue</a>
+        <a href="/cart" class="cart-link">
+          Cart
+        </a>
+        
+          <a href="/orders">My Orders</a>
+          <a href="/profile">Profile</a>
+          
+            <a href="/seller">Seller Dashboard</a>
+          
+          <a href="/diagnostics">Diagnostics</a>
+          <span class="nav-user">seller (seller)</span>
+          <a href="/logout" class="btn btn-outline">Logout</a>
+        
+      </nav>
+      <button class="nav-toggle" aria-label="Toggle menu" id="navToggle">☰</button>
+    </div>
+  </header>
+
+  <main class="container">
+    
+      
+        <div class="flash-messages">
+          
+            <div class="flash flash-success">Welcome back, seller!</div>
+          
+            <div class="flash flash-success">File &#39;minishop-valid-test.png&#39; uploaded successfully.</div>
+          
+        </div>
+      
+    
+
+    
+<section class="seller-section">
+  <h1>Seller Dashboard</h1>
+  <p class="section-sub">Manage products and upload images.</p>
+
+  <div class="seller-actions">
+    <a href="/seller/upload" class="btn btn-primary">Upload Product Image</a>
+  </div>
+
+  <h2>Products</h2>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Stock</th>
+          <th>Image</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+        <tr>
+          <td>1</td>
+          <td>Wireless Noise-Cancelling Headphones</td>
+          <td>£129.99</td>
+          <td>24</td>
+          <td>headphones.svg</td>
+        </tr>
+        
+        <tr>
+          <td>2</td>
+          <td>Mechanical Gaming Keyboard</td>
+          <td>£89.50</td>
+          <td>40</td>
+          <td>keyboard.svg</td>
+        </tr>
+        
+        <tr>
+          <td>3</td>
+          <td>Ultra-Slim Laptop Stand</td>
+          <td>£34.99</td>
+          <td>60</td>
+          <td>stand.svg</td>
+        </tr>
+        
+        <tr>
+          <td>4</td>
+          <td>Portable SSD 1TB</td>
+          <td>£109.00</td>
+          <td>30</td>
+          <td>ssd.svg</td>
+        </tr>
+        
+        <tr>
+          <td>5</td>
+          <td>Smart LED Desk Lamp</td>
+          <td>£45.75</td>
+          <td>50</td>
+          <td>lamp.svg</td>
+        </tr>
+        
+        <tr>
+          <td>6</td>
+          <td>Ergonomic Office Chair</td>
+          <td>£249.00</td>
+          <td>15</td>
+          <td>chair.svg</td>
+        </tr>
+        
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Uploaded Files</h2>
+  
+  <ul class="file-list">
+    
+    <li>
+      <a href="/uploads/minishop-valid-test.png">minishop-valid-test.png</a>
+    </li>
+    
+  </ul>
+  
+</section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 MiniShop — University SSDLC Lab. Intentionally vulnerable. Do not expose to the public internet.</p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('navToggle')?.addEventListener('click', function () {
+      document.querySelector('.main-nav')?.classList.toggle('open');
+    });
+  </script>
+</body>
+</html>

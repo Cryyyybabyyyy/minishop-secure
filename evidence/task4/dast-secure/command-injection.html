@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Diagnostics — MiniShop</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="logo">Mini<span>Shop</span></a>
+      <nav class="main-nav">
+        <a href="/">Home</a>
+        <a href="/#catalogue">Catalogue</a>
+        <a href="/cart" class="cart-link">
+          Cart
+        </a>
+        
+          <a href="/orders">My Orders</a>
+          <a href="/profile">Profile</a>
+          
+          <a href="/diagnostics">Diagnostics</a>
+          <span class="nav-user">alice (customer)</span>
+          <a href="/logout" class="btn btn-outline">Logout</a>
+        
+      </nav>
+      <button class="nav-toggle" aria-label="Toggle menu" id="navToggle">☰</button>
+    </div>
+  </header>
+
+  <main class="container">
+    
+      
+        <div class="flash-messages">
+          
+            <div class="flash flash-success">Welcome back, alice!</div>
+          
+        </div>
+      
+    
+
+    
+<section class="diagnostics-section">
+  <h1>Product Diagnostics</h1>
+  <p class="section-sub">
+    Enter a product support code to run a diagnostic check.
+    <em>(Lab feature — intentionally unsafe.)</em>
+  </p>
+
+  <form method="post" class="diagnostics-form">
+    <div class="form-group">
+      <label for="product_code">Product Code</label>
+      <input type="text" id="product_code" name="product_code"
+             value="PROD-1; id; whoami; hostname; uname -a; date;" placeholder="e.g. PROD-1001" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Run Diagnostics</button>
+  </form>
+
+  
+  <div class="diagnostics-output">
+    <h2>Result</h2>
+    <pre>Diagnostic check for product:
+PROD-1; id; whoami; hostname; uname -a; date;</pre>
+  </div>
+  
+</section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 MiniShop — University SSDLC Lab. Intentionally vulnerable. Do not expose to the public internet.</p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('navToggle')?.addEventListener('click', function () {
+      document.querySelector('.main-nav')?.classList.toggle('open');
+    });
+  </script>
+</body>
+</html>

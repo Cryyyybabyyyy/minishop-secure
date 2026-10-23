@@ -1,0 +1,17 @@
+=== MINISHOP: BEFORE vs AFTER SECURITY VERIFICATION ===
+
+[1] OS COMMAND INJECTION
+BEFORE: Injected OS commands executed
+AFTER: Payload displayed without command execution output
+
+[2] IDOR
+BEFORE: Alice accessed Bob's order (ID 3)
+AFTER: Alice -> Bob's order: HTTP 404
+
+[3] UNRESTRICTED FILE UPLOAD
+BEFORE: PHP file accepted and retrieved
+AFTER: See secure file-upload rejection evidence
+
+[4] BANDIT SAST
+BEFORE: 2 findings (B404, B602)
+AFTER: 0 findings
